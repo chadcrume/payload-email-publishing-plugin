@@ -19,14 +19,11 @@
       "@payload-config": [
         "./payload.config.ts"
       ],
-      "payload-email-publishing-plugin": [
+      "@chadcrume/payload-email-publishing": [
         "../src/index.ts"
       ],
-      "payload-email-publishing-plugin/client": [
+      "@chadcrume/payload-email-publishing/client": [
         "../src/exports/client.ts"
-      ],
-      "payload-email-publishing-plugin/rsc": [
-        "../src/exports/rsc.ts"
       ]
     },
     "noEmit": true,
