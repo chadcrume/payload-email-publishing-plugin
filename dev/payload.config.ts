@@ -3,7 +3,7 @@ import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import { MongoMemoryReplSet } from 'mongodb-memory-server'
 import path from 'path'
 import { buildConfig } from 'payload'
-import { payloadEmailPublishingPlugin } from 'payload-email-publishing-plugin'
+import { emailPublishing } from '@chadcrume/payload-email-publishing'
 import sharp from 'sharp'
 import { fileURLToPath } from 'url'
 
@@ -35,19 +35,7 @@ const buildConfigWithMemoryDB = async () => {
         baseDir: path.resolve(dirname),
       },
     },
-    collections: [
-      {
-        slug: 'posts',
-        fields: [],
-      },
-      {
-        slug: 'media',
-        fields: [],
-        upload: {
-          staticDir: path.resolve(dirname, 'media'),
-        },
-      },
-    ],
+    collections: [],
     db: mongooseAdapter({
       ensureIndexes: true,
       url: process.env.DATABASE_URL || '',
@@ -58,9 +46,17 @@ const buildConfigWithMemoryDB = async () => {
       await seed(payload)
     },
     plugins: [
-      payloadEmailPublishingPlugin({
-        collections: {
-          posts: true,
+      emailPublishing({
+        resolveRecipients: async () => [{ email: 'recipient@example.com', name: 'Test Recipient' }],
+        access: {
+          canManage: () => true,
+          canAdminister: () => true,
+        },
+        resend: {
+          apiKey: process.env.RESEND_API_KEY || 're_test',
+          webhookSecret: process.env.RESEND_WEBHOOKS_SIGNING_SECRET || 'whsec_test',
+          fromAddress: 'dev@example.com',
+          fromName: 'Dev',
         },
       }),
     ],
