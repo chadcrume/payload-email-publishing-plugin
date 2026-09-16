@@ -1,218 +1,117 @@
-# Payload Plugin Template
+# Payload Email Publishing Plugin
 
-A template repo to create a [Payload CMS](https://payloadcms.com) plugin.
+A [Payload CMS](https://payloadcms.com) 3.0 plugin for authoring, scheduling, and sending newsletter-style emails via [Resend](https://resend.com), with delivery/open/click tracking.
 
-Payload is built with a robust infrastructure intended to support Plugins with ease. This provides a simple, modular, and reusable way for developers to extend the core capabilities of Payload.
+## 🟢 Installation
 
-To build your own Payload plugin, all you need is:
+```bash
+pnpm add @chadcrume/payload-email-publishing
+```
 
-- An understanding of the basic Payload concepts
-- And some JavaScript/Typescript experience
-
-## Background
-
-Here is a short recap on how to integrate plugins with Payload, to learn more visit the [plugin overview page](https://payloadcms.com/docs/plugins/overview).
-
-### How to install a plugin
-
-To install any plugin, simply add it to your payload.config() in the Plugin array.
+## 🟢 Usage
 
 ```ts
-import myPlugin from 'my-plugin'
+import { emailPublishing } from '@chadcrume/payload-email-publishing'
 
-export const config = buildConfig({
+export default buildConfig({
   plugins: [
-    // You can pass options to the plugin
-    myPlugin({
-      enabled: true,
+    // Register last so restrictAdminNavToPlugin can see every other
+    // plugin's collections/globals too.
+    emailPublishing({
+      resolveRecipients: async ({ email, schedulerItem, req }) => {
+        // Look up your own subscriber/recipient model here. The plugin has
+        // no opinion on how recipients are stored.
+        return [{ email: 'someone@example.com', name: 'Someone' }]
+      },
+      access: {
+        canManage: ({ req }) => Boolean(req.user), // Posts / Emails / Scheduler Items CRUD
+        canAdminister: ({ req }) => req.user?.role === 'admin', // optional, defaults to canManage
+      },
+      resend: {
+        apiKey: process.env.RESEND_API_KEY!,
+        webhookSecret: process.env.RESEND_WEBHOOKS_SIGNING_SECRET!,
+        fromAddress: 'newsletter@yourdomain.com',
+        fromName: 'Your Name',
+      },
+      // Optional: reuse your own richText renderer for visual parity with
+      // the rest of your site instead of the plugin's minimal fallback.
+      // renderPostContentToHtml: (content) => yourRenderer(content),
     }),
   ],
 })
 ```
 
-### Initialization
+### Environment variables
 
-The initialization process goes in the following order:
+| Variable | Purpose |
+| --- | --- |
+| `RESEND_API_KEY` | Resend API key used to send/schedule messages. |
+| `RESEND_WEBHOOKS_SIGNING_SECRET` | Signing secret from the Resend webhook dashboard, used to verify inbound delivery/open/click events. |
+| `CRON_SECRET` | Bearer token required on `GET /api/payload-jobs/run` and the manual `trigger-sweep` endpoint, matching Vercel Cron's documented convention. |
 
-1. Incoming config is validated
-2. **Plugins execute**
-3. Default options are integrated
-4. Sanitization cleans and validates data
-5. Final config gets initialized
+### Vercel Cron
 
-## Building the Plugin
-
-When you build a plugin, you are purely building a feature for your project and then abstracting it outside of the project.
-
-### Template Files
-
-In the Payload [plugin template](https://github.com/payloadcms/payload/tree/3.x/templates/plugin), you will see a common file structure that is used across all plugins:
-
-1. root folder
-2. /src folder
-3. /dev folder
-
-#### Root
-
-In the root folder, you will see various files that relate to the configuration of the plugin. We set up our environment in a similar manner in Payload core and across other projects, so hopefully these will look familiar:
-
-- **README**.md\* - This contains instructions on how to use the template. When you are ready, update this to contain instructions on how to use your Plugin.
-- **package**.json\* - Contains necessary scripts and dependencies. Overwrite the metadata in this file to describe your Plugin.
-- .**eslint**.config.js - Eslint configuration for reporting on problematic patterns.
-- .**gitignore** - List specific untracked files to omit from Git.
-- .**prettierrc**.json - Configuration for Prettier code formatting.
-- **tsconfig**.json - Configures the compiler options for TypeScript
-- .**swcrc** - Configuration for SWC, a fast compiler that transpiles and bundles TypeScript.
-- **vitest**.config.js - Config file for Vitest, defining how tests are run and how modules are resolved
-
-**IMPORTANT\***: You will need to modify these files.
-
-#### Dev
-
-In the dev folder, you’ll find a basic payload project, created with `npx create-payload-app` and the blank template.
-
-**IMPORTANT**: Make a copy of the `.env.example` file and rename it to `.env`. Update the `DATABASE_URL` to match the database you are using and your plugin name. Update `PAYLOAD_SECRET` to a unique string.
-**You will not be able to run `pnpm/yarn dev` until you have created this `.env` file.**
-
-`myPlugin` has already been added to the `payload.config()` file in this project.
-
-```ts
-plugins: [
-  myPlugin({
-    collections: {
-      posts: true,
-    },
-  }),
-]
-```
-
-Later when you rename the plugin or add additional options, **make sure to update it here**.
-
-You may wish to add collections or expand the test project depending on the purpose of your plugin. Just make sure to keep this dev environment as simplified as possible - users should be able to install your plugin without additional configuration required.
-
-When you’re ready to start development, initiate the project with `pnpm/npm/yarn dev` and pull up [http://localhost:3000](http://localhost:3000) in your browser.
-
-#### Src
-
-Now that we have our environment setup and we have a dev project ready to - it’s time to build the plugin!
-
-**index.ts**
-
-The essence of a Payload plugin is simply to extend the payload config - and that is exactly what we are doing in this file.
-
-```ts
-export const myPlugin =
-  (pluginOptions: MyPluginConfig) =>
-  (config: Config): Config => {
-    // do cool stuff with the config here
-
-    return config
-  }
-```
-
-First, we receive the existing payload config along with any plugin options.
-
-From here, you can extend the config as you wish.
-
-Finally, you return the config and that is it!
-
-##### Spread Syntax
-
-Spread syntax (or the spread operator) is a feature in JavaScript that uses the dot notation **(...)** to spread elements from arrays, strings, or objects into various contexts.
-
-We are going to use spread syntax to allow us to add data to existing arrays without losing the existing data. It is crucial to spread the existing data correctly – else this can cause adverse behavior and conflicts with Payload config and other plugins.
-
-Let’s say you want to build a plugin that adds a new collection:
-
-```ts
-config.collections = [
-  ...(config.collections || []),
-  // Add additional collections here
-]
-```
-
-First we spread the `config.collections` to ensure that we don’t lose the existing collections, then you can add any additional collections just as you would in a regular payload config.
-
-This same logic is applied to other properties like admin, hooks, globals:
-
-```ts
-config.globals = [
-  ...(config.globals || []),
-  // Add additional globals here
-]
-
-config.hooks = {
-  ...(incomingConfig.hooks || {}),
-  // Add additional hooks here
+```json
+{
+  "crons": [{ "path": "/api/payload-jobs/run", "schedule": "0 9 * * *" }]
 }
 ```
 
-Some properties will be slightly different to extend, for instance the onInit property:
+## 🔵 Features
+
+### Plugin options
+
+| Option | Required | Description |
+| --- | --- | --- |
+| `resolveRecipients` | Yes | Resolves the "To" list for an Email at send hand-off time. |
+| `access.canManage` | Yes | Access control for Posts / Emails / Scheduler Items CRUD. |
+| `access.canAdminister` | No | Access control for the raw Email Sends log. Defaults to `canManage`. |
+| `resend.apiKey` / `webhookSecret` / `fromAddress` / `fromName` | Yes | Resend send + webhook verification config. |
+| `renderPostContentToHtml` | No | Renders a Post's richText content to HTML. Defaults to a minimal built-in serializer. |
+| `overridePosts` / `overrideEmails` | No | Wrap the default collection config before it's registered. |
+| `sweep.cron` / `sweep.handoffWindowMinutes` | No | Tuning knobs for the recurring hand-off task. Defaults assume a once-daily cron. |
+| `disabled` | No | Keeps collections/globals registered (for schema stability) without adding endpoints/jobs/nav restrictions. |
+
+### Collections
+
+- **Posts** — richText source content, reused across one or more Emails.
+- **Emails** — a subject plus an ordered list of Posts, optionally linked to a Scheduler Item.
+- **Scheduler Items** — when and to whom an Email sends (status, `sendAt`, recipient count).
+- **Email Sends** — one row per (Email, recipient) per send; the source of truth for delivery/open/click stats. Read-only via the admin UI; written only by the sweep job and the webhook endpoint.
+
+### Fields (`./client` export)
+
+- `EmailPreviewField` — live HTML preview of the selected Posts, debounced against the in-progress `posts` selection.
+- `SchedulerItemSettingsField` — read-only summary of the linked Scheduler Item's status/send time/recipient count.
+- `EmailStatsField` — delivery/open/click stats table, shown once an Email has been saved.
+
+These are wired into the `Emails` collection automatically; the `./client` export exists for apps that need to reference them directly (e.g. inside `overrideEmails`).
+
+### Endpoints
+
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| `GET` | `/api/email-publishing/render-preview?postIds=...` | `access.canManage` | Renders the given Posts to HTML for the live preview field. |
+| `GET` | `/api/email-publishing/email-stats/:emailId` | `access.canManage` | Aggregated Email Sends counts by status. |
+| `POST` | `/api/email-publishing/resend-webhook` | Svix signature (`resend.webhookSecret`) | Receives Resend delivery/open/click events. |
+| `GET` | `/api/email-publishing/trigger-sweep` | `CRON_SECRET` bearer token | Manually runs the sweep immediately (for use against a deployed environment). |
+
+### Jobs
+
+`sweepDueScheduledCampaigns` (exported as `SWEEP_TASK_SLUG`) is a recurring [Payload Job Task](https://payloadcms.com/docs/jobs-queue/overview) that hands off due Scheduler Items to Resend. Queue it manually for local testing:
 
 ```ts
-import { onInitExtension } from './onInitExtension' // example file
-
-config.onInit = async (payload) => {
-  if (incomingConfig.onInit) await incomingConfig.onInit(payload)
-  // Add additional onInit code by defining an onInitExtension function
-  onInitExtension(pluginOptions, payload)
-}
+await payload.jobs.queue({ task: SWEEP_TASK_SLUG, input: {} })
+await payload.jobs.run()
 ```
 
-If you wish to add to the onInit, you must include the **async/await**. We don’t use spread syntax in this case, instead you must await the existing `onInit` before running additional functionality.
+## 🔴 Contributing
 
-In the template, we have stubbed out some addition `onInit` actions that seeds in a document to the `plugin-collection`, you can use this as a base point to add more actions - and if not needed, feel free to delete it.
-
-##### Types.ts
-
-If your plugin has options, you should define and provide types for these options.
-
-```ts
-export type MyPluginConfig = {
-  /**
-   * List of collections to add a custom field
-   */
-  collections?: Partial<Record<CollectionSlug, true>>
-  /**
-   * Disable the plugin
-   */
-  disabled?: boolean
-}
+```bash
+pnpm install
+cp dev/.env.example dev/.env   # then fill in a real DATABASE_URL/PAYLOAD_SECRET
+pnpm dev                       # http://localhost:3000/admin
+pnpm test                      # pnpm test:int && pnpm test:e2e
 ```
 
-If possible, include JSDoc comments to describe the options and their types. This allows a developer to see details about the options in their editor.
-
-##### Testing
-
-Having a test suite for your plugin is essential to ensure quality and stability. **Vitest** is a fast, modern testing framework that works seamlessly with Vite and supports TypeScript out of the box.
-
-Vitest organizes tests into test suites and cases, similar to other testing frameworks. We recommend creating individual tests based on the expected behavior of your plugin from start to finish.
-
-Writing tests with Vitest is very straightforward, and you can learn more about how it works in the [Vitest documentation.](https://vitest.dev/)
-
-For this template, we stubbed out `int.spec.ts` in the `dev` folder where you can write your tests.
-
-```ts
-describe('Plugin tests', () => {
-  // Create tests to ensure expected behavior from the plugin
-  it('some condition that must be met', () => {
-   // Write your test logic here
-   expect(...)
-  })
-})
-```
-
-## Best practices
-
-With this tutorial and the plugin template, you should have everything you need to start building your own plugin.
-In addition to the setup, here are other best practices aim we follow:
-
-- **Providing an enable / disable option:** For a better user experience, provide a way to disable the plugin without uninstalling it. This is especially important if your plugin adds additional webpack aliases, this will allow you to still let the webpack run to prevent errors.
-- **Include tests in your GitHub CI workflow**: If you’ve configured tests for your package, integrate them into your workflow to run the tests each time you commit to the plugin repository. Learn more about [how to configure tests into your GitHub CI workflow.](https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-nodejs)
-- **Publish your finished plugin to NPM**: The best way to share and allow others to use your plugin once it is complete is to publish an NPM package. This process is straightforward and well documented, find out more [creating and publishing a NPM package here.](https://docs.npmjs.com/creating-and-publishing-scoped-public-packages/).
-- **Add payload-plugin topic tag**: Apply the tag **payload-plugin **to your GitHub repository. This will boost the visibility of your plugin and ensure it gets listed with [existing payload plugins](https://github.com/topics/payload-plugin).
-- **Use [Semantic Versioning](https://semver.org/) (SemVar)** - With the SemVar system you release version numbers that reflect the nature of changes (major, minor, patch). Ensure all major versions reference their Payload compatibility.
-
-# Questions
-
-Please contact [Payload](mailto:dev@payloadcms.com) with any questions about using this plugin template.
+`dev/` is a minimal Payload + Next.js app registering only this plugin, used for both manual development and as the automated test target.
