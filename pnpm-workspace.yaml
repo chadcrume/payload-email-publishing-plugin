@@ -3,3 +3,5 @@ allowBuilds:
   sharp: true
   unrs-resolver: true
   workerd: true
+  "@swc/core": true
+  mongodb-memory-server: true

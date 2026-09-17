@@ -11,15 +11,13 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v6
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+
+      - name: Install pnpm and Node 24
+        uses: pnpm/setup@v2
         with:
-          version: 10.28.2 # Specify the pnpm version you want to use
-          run_install: false # Defer install to a separate step for better caching integration
-      - uses: actions/setup-node@v6
-        with:
-          node-version: "24"
-          registry-url: "https://registry.npmjs.org"
+          runtime: node@24
+          cache: true
+
       - run: pnpm install
       - run: pnpm build
       - run: pnpm publish --no-git-checks
