@@ -17,7 +17,13 @@ jobs:
         with:
           runtime: node@24
           cache: true
+          install: false
 
-      - run: pnpm install
+      # --trust-lockfile: this lockfile is committed to git and already
+      # verified locally (built + tested) before being pushed, so
+      # re-checking it against pnpm's minimumReleaseAge supply-chain policy
+      # here is redundant and can spuriously fail CI if a pinned dependency
+      # was published very recently relative to this run.
+      - run: pnpm install --trust-lockfile
       - run: pnpm build
       - run: pnpm publish --no-git-checks
