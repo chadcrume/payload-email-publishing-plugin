@@ -1,6 +1,6 @@
 {
   "name": "@chadcrume/payload-email-publishing",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "A Payload CMS 3.0 plugin for authoring, scheduling, and sending newsletter-style emails via Resend, with delivery/open/click tracking.",
   "license": "MIT",
   "type": "module",
