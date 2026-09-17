@@ -57,6 +57,12 @@ export default buildConfig({
 }
 ```
 
+## 🟡 Composing & publishing an email
+
+For content editors using the admin UI, see the [User Guide](docs/user-guide.md)
+for the end-to-end process: writing Posts, assembling an Email, scheduling or
+sending it, and tracking delivery/open/click stats.
+
 ## 🔵 Features
 
 ### Plugin options
